@@ -69,25 +69,19 @@ async function run() {
     })
 
     app.get("/cars/owner/:email", async (req, res) => {
-      try {
-        const email = req.params.email;
-        const query = { addedBy: email };
-        const cursor = carsCollection.find(query);
-        const result = await cursor.toArray();
-        res.send(result);
-      } catch (error) {
-        console.error("Error getting owner's cars:", error);
-        res.status(500).send({ success: false, error: error.message });
-      }
+      const email = req.params.email;
+      const query = { addedBy: email };
+      const cursor = carsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
     });
-
     app.put("/cars/:id", async (req, res) => {
       try {
         const id = req.params.id;
         const updatedData = req.body;
-        delete updatedData._id; // Ensure we don't try to update the immutable _id
-        
-        // Convert specs to numeric if they are passed as strings
+        delete updatedData._id;
+
+
         if (updatedData.year) updatedData.year = Number(updatedData.year);
         if (updatedData.price_per_day) updatedData.price_per_day = Number(updatedData.price_per_day);
         if (updatedData.seats) updatedData.seats = Number(updatedData.seats);
@@ -117,6 +111,7 @@ async function run() {
         res.status(500).send({ success: false, error: error.message });
       }
     });
+
 
     app.get("/cars/:id", async (req, res) => {
       const id = req.params.id

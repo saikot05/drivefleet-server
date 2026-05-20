@@ -35,6 +35,40 @@ async function run() {
       res.send(result)
     })
 
+    app.post('/cars', async (req, res) => {
+      try {
+        console.log('data in the request:', req.body);
+        const newCar = req.body;
+        
+        if (!newCar.make || !newCar.model || !newCar.price_per_day) {
+          return res.status(400).send({
+            success: false,
+            message: "Missing required fields (make, model, or price_per_day)"
+          });
+        }
+
+        newCar.available = true;
+        if (!newCar.created_at) {
+          newCar.created_at = new Date().toISOString(); 
+        }
+
+        const result = await carsCollection.insertOne(newCar);
+        
+        res.send({
+          success: true,
+          data: result,
+          message: "Car added successfully"
+        });
+      } catch (error) {
+        console.error('Error adding car:', error);
+        res.status(500).send({
+          success: false,
+          message: "An error occurred while adding the car",
+          error: error.message
+        });
+      }
+    })
+
     app.get("/cars/:id", async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
@@ -57,8 +91,43 @@ async function run() {
     app.post("/bookings", async (req, res) => {
       const booking = req.body
       const result = await bookingCollection.insertOne(booking)
+
+      const carId = booking.carId
+      if (carId) {
+        await carsCollection.updateOne(
+          { _id: new ObjectId(carId) },
+          { $set: { available: false } }
+        )
+      }
       res.send(result)
     })
+
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email
+      let query = {}
+      if (email) {
+        query = { userEmail: email }
+      }
+      const cursor = bookingCollection.find(query)
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id
+      const carId = req.query.carId
+      const query = { _id: new ObjectId(id) }
+      const result = await bookingCollection.deleteOne(query)
+
+      if (carId) {
+        await carsCollection.updateOne(
+          { _id: new ObjectId(carId) },
+          { $set: { available: true } }
+        )
+      }
+      res.send(result)
+    })
+
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {

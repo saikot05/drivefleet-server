@@ -8,8 +8,11 @@ app.use(cors());
 app.use(express.json());
 const PORT = process.env.PORT || 8000;
 
-const uri = "mongodb+srv://DriveFleet:ZJUADVfx032OHhjR@cluster0.yhupfzi.mongodb.net/?appName=Cluster0";
 
+
+const uri = process.env.MONGODB_URI;
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -20,82 +23,64 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    
-    const db = client.db("driveFleetdb");
-    const carsCollection = db.collection("cars");
-    
-    app.get("/cars", async(req, res) => {
-      const cursor = carsCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
 
-    app.get("/cars/:id", async(req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await carsCollection.findOne(query);
-      res.send(result);
-    });
+    const db = client.db("driveFleetdb")
+    const carsCollection = db.collection("cars")
+    const bookingCollection = db.collection("bookings")
+    app.get("/cars", async (req, res) => {
+      const cursor = carsCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
+    })
 
-    app.get("/availableCars", async(req, res) => {
-      const query = { available: true };
-      const cursor = carsCollection.find(query).limit(6);
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    const bookingsCollection = db.collection("bookings");
-
-    app.post("/bookings", async(req, res) => {
-      const booking = req.body;
-      const result = await bookingsCollection.insertOne(booking);
-      
-      const carId = booking.carId;
-      await carsCollection.updateOne(
-        { _id: new ObjectId(carId) },
-        { $set: { available: false } }
-      );
-      
-      res.send(result);
-    });
-
-    app.get("/bookings", async(req, res) => {
-      const email = req.query.email;
-      let query = {};
-      if (email) {
-        query = { userEmail: email };
-      }
-      const cursor = bookingsCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.delete("/bookings/:id", async(req, res) => {
-      const id = req.params.id;
-      const carId = req.query.carId;
-      const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
-      
-      if (carId) {
-        await carsCollection.updateOne(
-          { _id: new ObjectId(carId) },
-          { $set: { available: true } }
-        );
-      }
-      
-      res.send(result);
-    });
+    app.get("/cars/:id", async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await carsCollection.findOne(query)
+      res.send(result)
+    })
+    app.get("/availableCars", async (req, res) => {
+      const query = { available: true }
+      const cursor = carsCollection.find(query).limit(6)
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+    app.get("/bookings/user/:userId", async (req, res) => {
+      const userId = req.params.userId
+      const query = { userId: userId }
+      const cursor = bookingCollection.find(query)
+      const result = await cursor.toArray()
+      res.send(result)
+    })
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body
+      const result = await bookingCollection.insertOne(booking)
+      res.send(result)
+    })
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
+    // Ensures that the client will close when you finish/error
+    // await client.close();
   }
 }
 run().catch(console.dir);
 
+
+
+
+
+
+
+
 app.get("/", (req, res) => {
-    res.send("Hello World!");
+  res.send("Hello World!");
 });
 
+
+
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

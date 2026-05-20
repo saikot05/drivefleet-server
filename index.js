@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 8000;
 
 const uri = process.env.MONGODB_URI;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -23,7 +23,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
     const db = client.db("driveFleetdb")
@@ -39,7 +38,7 @@ async function run() {
       try {
         console.log('data in the request:', req.body);
         const newCar = req.body;
-        
+
         if (!newCar.make || !newCar.model || !newCar.price_per_day) {
           return res.status(400).send({
             success: false,
@@ -49,11 +48,11 @@ async function run() {
 
         newCar.available = true;
         if (!newCar.created_at) {
-          newCar.created_at = new Date().toISOString(); 
+          newCar.created_at = new Date().toISOString();
         }
 
         const result = await carsCollection.insertOne(newCar);
-        
+
         res.send({
           success: true,
           data: result,
@@ -68,6 +67,56 @@ async function run() {
         });
       }
     })
+
+    app.get("/cars/owner/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { addedBy: email };
+        const cursor = carsCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error getting owner's cars:", error);
+        res.status(500).send({ success: false, error: error.message });
+      }
+    });
+
+    app.put("/cars/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+        delete updatedData._id; // Ensure we don't try to update the immutable _id
+        
+        // Convert specs to numeric if they are passed as strings
+        if (updatedData.year) updatedData.year = Number(updatedData.year);
+        if (updatedData.price_per_day) updatedData.price_per_day = Number(updatedData.price_per_day);
+        if (updatedData.seats) updatedData.seats = Number(updatedData.seats);
+        if (updatedData.mileage) updatedData.mileage = Number(updatedData.mileage);
+        if (updatedData.horsepower) updatedData.horsepower = Number(updatedData.horsepower);
+
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: updatedData,
+        };
+        const result = await carsCollection.updateOne(filter, updateDoc);
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("Error updating car:", error);
+        res.status(500).send({ success: false, error: error.message });
+      }
+    });
+
+    app.delete("/cars/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await carsCollection.deleteOne(query);
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("Error deleting car:", error);
+        res.status(500).send({ success: false, error: error.message });
+      }
+    });
 
     app.get("/cars/:id", async (req, res) => {
       const id = req.params.id

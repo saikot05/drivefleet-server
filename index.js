@@ -26,7 +26,7 @@ const logger = (req, res, next) => {
   next();
 }
 const JWKS = createRemoteJWKSet(
-  new URL("http://localhost:3000/api/auth/jwks")
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`)
 )
 const verifytoken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -51,7 +51,7 @@ const verifytoken = async (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
+    //await client.connect();
 
     const db = client.db("driveFleetdb")
     const carsCollection = db.collection("cars")
@@ -161,7 +161,7 @@ async function run() {
       const result = await cursor.toArray()
       res.send(result)
     })
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifytoken, async (req, res) => {
       const booking = req.body
       const result = await bookingCollection.insertOne(booking)
 
@@ -175,7 +175,7 @@ async function run() {
       res.send(result)
     })
 
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifytoken, async (req, res) => {
       const email = req.query.email
       let query = {}
       if (email) {
@@ -201,7 +201,7 @@ async function run() {
       res.send(result)
     })
 
-
+    //await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error

@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require("cors");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -20,6 +21,33 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+const logger = (req, res, next) => {
+  console.log(`${req.method} | ${req.url}`)
+  next();
+}
+const JWKS = createRemoteJWKSet(
+  new URL("http://localhost:3000/api/auth/jwks")
+)
+const verifytoken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" })
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    req.user = payload;
+    next();
+  } catch (error) {
+    console.log(error)
+    res.status(401).send({ message: "Unauthorized" })
+  }
+
+
+}
 
 async function run() {
   try {
@@ -113,12 +141,13 @@ async function run() {
     });
 
 
-    app.get("/cars/:id", async (req, res) => {
-      const id = req.params.id
-      const query = { _id: new ObjectId(id) }
-      const result = await carsCollection.findOne(query)
-      res.send(result)
-    })
+    app.get("/cars/:id", logger, verifytoken,
+      async (req, res) => {
+        const id = req.params.id
+        const query = { _id: new ObjectId(id) }
+        const result = await carsCollection.findOne(query)
+        res.send(result)
+      })
     app.get("/availableCars", async (req, res) => {
       const query = { available: true }
       const cursor = carsCollection.find(query).limit(6)

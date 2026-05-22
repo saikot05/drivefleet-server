@@ -30,7 +30,7 @@ const JWKS = createRemoteJWKSet(
 )
 const verifytoken = async(req, res, next) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).send({ message: "Unauthorized" });
     }
     const token = authHeader.split(" ")[1];
@@ -141,7 +141,7 @@ async function run() {
         });
 
 
-        app.get("/cars/:id",
+        app.get("/cars/:id", verifytoken,
             async(req, res) => {
                 const id = req.params.id
                 const query = { _id: new ObjectId(id) }

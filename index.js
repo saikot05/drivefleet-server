@@ -53,14 +53,39 @@ async function run() {
     try {
         //await client.connect();
 
-        const db = client.db("driveFleetdb")
-        const carsCollection = db.collection("cars")
-        const bookingCollection = db.collection("bookings")
+        const db = client.db("driveFleetdb");
+        const carsCollection = db.collection("cars");
+        const bookingCollection = db.collection("bookings");
         app.get("/cars", async(req, res) => {
-            const cursor = carsCollection.find()
-            const result = await cursor.toArray()
-            res.send(result)
-        })
+            try {
+                const { search, sortBy } = req.query;
+                let query = {};
+                if (search) {
+                    query.$or = [
+                        { make: { $regex: search, $options: "i" } },
+                        { model: { $regex: search, $options: "i" } },
+                        { location: { $regex: search, $options: "i" } }
+                    ];
+                }
+                let sortOption = {};
+                if (sortBy === "booking_count") {
+                    sortOption.booking_count = -1;
+                } else if (sortBy === "price_asc") {
+                    sortOption = { price_per_day: 1 };
+                } else if (sortBy === "price_desc") {
+                    sortOption = { price_per_day: -1 };
+                }
+                const result = await carsCollection.find(query).sort(sortOption).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error('Error fetching cars:', error);
+                res.status(500).send({
+                    success: false,
+                    message: "An error occurred while fetching cars",
+                    error: error.message
+                });
+            }
+        });
 
         app.post('/cars', verifytoken, async(req, res) => {
             try {
@@ -95,7 +120,7 @@ async function run() {
                     error: error.message
                 });
             }
-        })
+        });
 
         app.get("/cars/owner/:email", async(req, res) => {
             const email = req.params.email;
@@ -149,20 +174,20 @@ async function run() {
                 const query = { _id: new ObjectId(id) }
                 const result = await carsCollection.findOne(query)
                 res.send(result)
-            })
+            });
         app.get("/availableCars", async(req, res) => {
             const query = { available: true }
             const cursor = carsCollection.find(query).limit(6)
             const result = await cursor.toArray()
             res.send(result)
-        })
+        });
         app.get("/bookings/user/:userId", async(req, res) => {
             const userId = req.params.userId
             const query = { userId: userId }
             const cursor = bookingCollection.find(query)
             const result = await cursor.toArray()
             res.send(result)
-        })
+        });
         app.post("/bookings", verifytoken, async(req, res) => {
             try {
                 const booking = req.body
@@ -178,7 +203,7 @@ async function run() {
                 res.status(500).send({ success: false, error: error.message });
             }
 
-        })
+        });
 
         app.get("/bookings", verifytoken, async(req, res) => {
             const email = req.query.email
@@ -189,7 +214,7 @@ async function run() {
             const cursor = bookingCollection.find(query)
             const result = await cursor.toArray()
             res.send(result)
-        })
+        });
 
         app.delete("/bookings/:id", verifytoken, async(req, res) => {
             try {
@@ -207,7 +232,7 @@ async function run() {
                 console.error("Error deleting booking:", error);
                 res.status(500).send({ success: false, error: error.message });
             }
-        })
+        });
 
         //await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -220,13 +245,8 @@ run().catch(console.dir);
 
 
 
-
-
-
-
-
 app.get("/", (req, res) => {
-    res.send("Hello World!");
+    res.send("DriveFleet Server is running");
 });
 
 

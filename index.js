@@ -5,7 +5,14 @@ const cors = require("cors");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 dotenv.config();
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.options("*", cors());
+app.use(logger);
 app.use(express.json());
 const PORT = process.env.PORT || 8000;
 
@@ -22,7 +29,7 @@ const client = new MongoClient(uri, {
     }
 });
 const logger = (req, res, next) => {
-    console.log(`${req.method} | ${req.url}`)
+    console.log(`${req.method } | ${ req.url }`)
     next();
 }
 const JWKS = createRemoteJWKSet(

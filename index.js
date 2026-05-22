@@ -62,7 +62,7 @@ async function run() {
             res.send(result)
         })
 
-        app.post('/cars', async(req, res) => {
+        app.post('/cars', verifytoken, async(req, res) => {
             try {
                 console.log('data in the request:', req.body);
                 const newCar = req.body;
@@ -103,7 +103,7 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         });
-        app.put("/cars/:id", async(req, res) => {
+        app.put("/cars/:id", verifytoken, async(req, res) => {
             try {
                 const id = req.params.id;
                 const updatedData = req.body;
@@ -128,7 +128,7 @@ async function run() {
             }
         });
 
-        app.delete("/cars/:id", async(req, res) => {
+        app.delete("/cars/:id", verifytoken, async(req, res) => {
             try {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };

@@ -58,8 +58,9 @@ async function run() {
         const bookingCollection = db.collection("bookings");
         app.get("/cars", async(req, res) => {
             try {
-                const { search, sortBy } = req.query;
+                const { search, brand, availability, sort } = req.query;
                 let query = {};
+
                 if (search) {
                     query.$or = [
                         { make: { $regex: search, $options: "i" } },
@@ -67,14 +68,30 @@ async function run() {
                         { location: { $regex: search, $options: "i" } }
                     ];
                 }
-                let sortOption = {};
-                if (sortBy === "booking_count") {
-                    sortOption.booking_count = -1;
-                } else if (sortBy === "price_asc") {
-                    sortOption = { price_per_day: 1 };
-                } else if (sortBy === "price_desc") {
-                    sortOption = { price_per_day: -1 };
+
+                if (brand) {
+                    query.make = { $regex: brand, $options: "i" };
                 }
+
+                if (availability === "available") {
+                    query.available = true;
+                } else if (availability === "unavailable") {
+                    query.available = false;
+                }
+
+                let sortOption = {};
+                if (sort === "booking-count" || sort === "booking_count") {
+                    sortOption.booking_count = -1;
+                } else if (sort === "price-low-high") {
+                    sortOption = { price_per_day: 1 };
+                } else if (sort === "price-high-low") {
+                    sortOption = { price_per_day: -1 };
+                } else if (sort === "year-new-old") {
+                    sortOption = { year: -1 };
+                } else if (sort === "rating-high-low") {
+                    sortOption = { rating: -1 };
+                }
+
                 const result = await carsCollection.find(query).sort(sortOption).toArray();
                 res.send(result);
             } catch (error) {

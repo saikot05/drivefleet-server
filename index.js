@@ -75,6 +75,7 @@ async function run() {
                 }
 
                 newCar.available = true;
+                newCar.booking_count = 0;
                 if (!newCar.created_at) {
                     newCar.created_at = new Date().toISOString();
                 }
@@ -133,6 +134,7 @@ async function run() {
                 const id = req.params.id;
                 const query = { _id: new ObjectId(id) };
                 const result = await carsCollection.deleteOne(query);
+
                 res.send({ success: true, result });
             } catch (error) {
                 console.error("Error deleting car:", error);
@@ -162,14 +164,20 @@ async function run() {
             res.send(result)
         })
         app.post("/bookings", verifytoken, async(req, res) => {
-            const booking = req.body
-            const result = await bookingCollection.insertOne(booking)
+            try {
+                const booking = req.body
+                const result = await bookingCollection.insertOne(booking)
 
-            const carId = booking.carId
-            if (carId) {
-                await carsCollection.updateOne({ _id: new ObjectId(carId) }, { $set: { available: false } })
+                const carId = booking.carId
+                if (carId) {
+                    await carsCollection.updateOne({ _id: new ObjectId(carId) }, { $set: { available: false }, $inc: { booking_count: 1 } })
+                }
+                res.send(result)
+            } catch (error) {
+                console.error("Error creating booking:", error);
+                res.status(500).send({ success: false, error: error.message });
             }
-            res.send(result)
+
         })
 
         app.get("/bookings", verifytoken, async(req, res) => {
@@ -184,15 +192,21 @@ async function run() {
         })
 
         app.delete("/bookings/:id", verifytoken, async(req, res) => {
-            const id = req.params.id
-            const carId = req.query.carId
-            const query = { _id: new ObjectId(id) }
-            const result = await bookingCollection.deleteOne(query)
+            try {
+                const id = req.params.id
+                const carId = req.query.carId
+                const query = { _id: new ObjectId(id) }
+                const result = await bookingCollection.deleteOne(query)
 
-            if (carId) {
-                await carsCollection.updateOne({ _id: new ObjectId(carId) }, { $set: { available: true } })
+                if (carId) {
+                    await carsCollection.updateOne({ _id: new ObjectId(carId) }, { $set: { available: true }, $inc: { booking_count: -1 } })
+
+                }
+                res.send(result)
+            } catch (error) {
+                console.error("Error deleting booking:", error);
+                res.status(500).send({ success: false, error: error.message });
             }
-            res.send(result)
         })
 
         //await client.db("admin").command({ ping: 1 });

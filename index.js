@@ -11,8 +11,7 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.options("*", cors());
-app.use(logger);
+
 app.use(express.json());
 const PORT = process.env.PORT || 8000;
 

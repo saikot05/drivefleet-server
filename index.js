@@ -183,7 +183,7 @@ async function run() {
             res.send(result)
         })
 
-        app.delete("/bookings/:id", async(req, res) => {
+        app.delete("/bookings/:id", verifytoken, async(req, res) => {
             const id = req.params.id
             const carId = req.query.carId
             const query = { _id: new ObjectId(id) }
